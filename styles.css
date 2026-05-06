@@ -88,6 +88,14 @@ body {
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
+/* Fallback for older browsers that don't support backdrop-filter */
+@supports not (backdrop-filter: blur(10px)) {
+  .panel {
+    background: var(--color-bg-main);
+    border-color: var(--color-text-tertiary);
+  }
+}
+
 .panel:hover {
   box-shadow: 0 12px 40px 0 var(--color-glass-shadow);
 }
