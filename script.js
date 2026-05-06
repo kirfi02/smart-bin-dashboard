@@ -261,6 +261,17 @@ function updateDisplay() {
         }
     });
 
+    // Sync map visibility (hide extra markers)
+    for (let i = 0; i < 3; i++) {
+        const dot = document.getElementById(`map-dot-${i}`);
+        const text = document.getElementById(`map-text-${i}`);
+        if (dot && text) {
+            const isVisible = i < bins.length;
+            dot.style.display = isVisible ? 'block' : 'none';
+            text.style.display = isVisible ? 'block' : 'none';
+        }
+    }
+
     phoneTimeEl.textContent = getSimTime();
     updateChart();
     updateFirmwareCode();
@@ -389,6 +400,27 @@ function addBin() {
     if (text) text.style.display = 'block';
     saveState();
 }
+function removeBin(index) {
+    if (bins.length <= 1) return;
+    const bin = bins[index];
+    if (confirm(`Are you sure you want to disconnect ${bin.name}?`)) {
+        // Hide map elements before removing
+        const dot = document.getElementById(`map-dot-${bins.length - 1}`);
+        const text = document.getElementById(`map-text-${bins.length - 1}`);
+        if (dot) dot.style.display = 'none';
+        if (text) text.style.display = 'none';
+
+        addLog(`IoT Node disconnected: ${bin.name}`, 'danger');
+        bins.splice(index, 1);
+        
+        // Update IDs of remaining bins to keep them sequential
+        bins.forEach((b, i) => b.id = i + 1);
+        
+        renderBins();
+        updateDisplay();
+        saveState();
+    }
+}
 
 function renderBins() {
     binsContainer.innerHTML = '';
@@ -399,7 +431,10 @@ function renderBins() {
         card.innerHTML = `
             <div class="bin-card-header">
                 <span class="bin-name">Bin #${bin.id} (${bin.name})</span>
-                <span class="bin-status-tag">Online</span>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span class="bin-status-tag">Online</span>
+                    ${i > 0 ? `<button onclick="removeBin(${i})" class="btn-mini btn-danger" style="padding: 2px 5px; border-radius: 4px;">×</button>` : ''}
+                </div>
             </div>
             <div class="bin-wrap">
                 <div class="bin-scene" onmouseenter="onMouseEnterBin(${i})" onmouseleave="onMouseLeaveBin(${i})">
