@@ -149,6 +149,7 @@ const SAVINGS_DATA = {
 let currentLang = 'en';
 let voiceEnabled = false;
 let isLiveMode = false;
+let lastTickTime = Date.now();
 
 // DOM Elements
 const binsContainer = document.getElementById('bins-container');
@@ -295,25 +296,39 @@ function updateRoute() {
 }
 
 function tick() {
-    if (!running || isLiveMode) return;
-    simSeconds++;
-    const speed = parseInt(document.getElementById('speed').value);
-    const weather = document.getElementById('weather-select').value;
+    if (!running || isLiveMode) {
+        lastTickTime = Date.now();
+        return;
+    }
 
-    bins.forEach(bin => {
-        const alert = bin.tick(speed, weather);
-        if (alert) {
-            addLog(alert.msg, alert.type === 'alert' ? 'warn' : 'danger');
-            if (alert.type === 'alert') {
-                addNotif(`Collection Needed: ${bin.name}`, `Level: ${Math.round(bin.fillLevel)}% - Action required.`);
-                addSMS(`IOT-ALERT: ${bin.name} is ${Math.round(bin.fillLevel)}% full. Route optimization triggered.`);
-                playAlert();
-                if (voiceEnabled) {
-                    speak(`Attention. ${bin.name} has reached threshold level. Collection route generated.`);
+    const now = Date.now();
+    const deltaMs = now - lastTickTime;
+    lastTickTime = now;
+
+    // Browsers throttle background tabs to 1s or more. 
+    // We calculate how many 500ms intervals actually passed.
+    const intervalsPassed = Math.floor(deltaMs / 500) || 1;
+
+    for (let i = 0; i < intervalsPassed; i++) {
+        simSeconds++;
+        const speed = parseInt(document.getElementById('speed').value);
+        const weather = document.getElementById('weather-select').value;
+
+        bins.forEach(bin => {
+            const alert = bin.tick(speed, weather);
+            if (alert) {
+                addLog(alert.msg, alert.type === 'alert' ? 'warn' : 'danger');
+                if (alert.type === 'alert') {
+                    addNotif(`Collection Needed: ${bin.name}`, `Level: ${Math.round(bin.fillLevel)}% - Action required.`);
+                    addSMS(`IOT-ALERT: ${bin.name} is ${Math.round(bin.fillLevel)}% full. Route optimization triggered.`);
+                    playAlert();
+                    if (voiceEnabled) {
+                        speak(`Attention. ${bin.name} has reached threshold level. Collection route generated.`);
+                    }
                 }
             }
-        }
-    });
+        });
+    }
 
     updateDisplay();
 }
@@ -322,6 +337,14 @@ function startSim() {
     running = true;
     btnStart.style.display = 'none';
     btnPause.style.display = 'inline-block';
+    
+    // Unlock Voice for Mobile
+    if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance("");
+        window.speechSynthesis.speak(utterance);
+    }
+    
+    lastTickTime = Date.now();
     if (!simInterval) simInterval = setInterval(tick, 500);
     addLog('System Monitoring Online', 'success');
 }
