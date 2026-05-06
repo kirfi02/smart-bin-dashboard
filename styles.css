@@ -664,5 +664,25 @@ pre {
   .fill-pct {
     font-size: 22px;
   }
+
+  /* Larger Tap Targets for Mobile */
+  button, select, input[type="range"] {
+    min-height: 44px;
+    padding: 10px 15px;
+    font-size: 14px;
+  }
+
+  .btn-mini {
+    min-height: 32px;
+    padding: 5px 10px;
+  }
+
+  .slider-row {
+    margin: 15px 0;
+  }
+
+  .panel {
+    padding: 15px;
+  }
 }
 

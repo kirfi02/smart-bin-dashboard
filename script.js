@@ -437,7 +437,7 @@ function renderBins() {
                 </div>
             </div>
             <div class="bin-wrap">
-                <div class="bin-scene" onmouseenter="onMouseEnterBin(${i})" onmouseleave="onMouseLeaveBin(${i})">
+                <div class="bin-scene" onclick="onToggleLid(${i})" onmouseenter="onMouseEnterBin(${i})" onmouseleave="onMouseLeaveBin(${i})">
                     <div class="bin-base">
                         <div class="bin-lid" id="lid-${i}">
                             <svg width="110" height="14" viewBox="0 0 110 14"><rect x="0" y="0" width="110" height="14" rx="6" fill="none" stroke="currentColor" stroke-width="2"/></svg>
@@ -490,6 +490,22 @@ function onMouseLeaveBin(index) {
     if (bins[index]) {
         bins[index].lidOpen = false;
         updateDisplay();
+    }
+}
+
+function onToggleLid(index) {
+    if (bins[index]) {
+        bins[index].lidOpen = !bins[index].lidOpen;
+        updateDisplay();
+        // Close after 2 seconds automatically on mobile
+        if (bins[index].lidOpen) {
+            setTimeout(() => {
+                if (bins[index]) {
+                    bins[index].lidOpen = false;
+                    updateDisplay();
+                }
+            }, 2000);
+        }
     }
 }
 
