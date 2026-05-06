@@ -18,23 +18,23 @@ class Bin {
 
     tick(speed, weather = 'sunny') {
         if (this.maintenanceMode) return null;
-        
+
         if (this.fillLevel < 100) {
             let fillFactor = weather === 'rainy' ? 1.5 : 1.0;
             const increment = speed * (0.2 + Math.random() * 0.3) * fillFactor;
             this.lastFillLevel = this.fillLevel;
             this.fillLevel = Math.min(100, this.fillLevel + increment);
             this.fillRate = this.fillLevel - this.lastFillLevel;
-            
+
             this.batteryLevel = Math.max(0, this.batteryLevel - 0.005);
-            
+
             // Random health degradation
             if (Math.random() < 0.01) this.health = Math.max(0, this.health - Math.random() * 5);
-            
+
             let tempBase = weather === 'sunny' ? 28 : 18;
             this.temperature += (tempBase - this.temperature) * 0.1 + (Math.random() - 0.5) * 0.2;
         }
-        
+
         const pct = Math.round(this.fillLevel);
         this.history.push({ time: getSimTime(), val: pct });
         if (this.history.length > 20) this.history.shift();
@@ -235,9 +235,9 @@ function updateDisplay() {
             fillEl.style.backgroundColor = getBinColor(pct);
         }
         if (pctEl) pctEl.textContent = pct + '%';
-        if (distEl) distEl.textContent = (BIN_DEPTH_CM * (1 - pct/100)).toFixed(1) + ' cm';
+        if (distEl) distEl.textContent = (BIN_DEPTH_CM * (1 - pct / 100)).toFixed(1) + ' cm';
         if (batteryEl) batteryEl.textContent = Math.round(bin.batteryLevel) + '%';
-        
+
         if (mapDot) mapDot.setAttribute('fill', getBinColor(pct));
 
         // Lid animation
@@ -251,7 +251,7 @@ function updateDisplay() {
         const predictEl = document.getElementById(`predict-${index}`);
         const healthEl = document.getElementById(`health-val-${index}`);
         const threshold = parseInt(document.getElementById('threshold').value);
-        
+
         if (predictEl) {
             predictEl.textContent = bin.maintenanceMode ? 'N/A' : `Est. Full: ${bin.getEstimatedTime(threshold)}`;
         }
@@ -281,10 +281,10 @@ function updateDisplay() {
 function updateRoute() {
     const route = document.getElementById('collection-route');
     if (!route) return;
-    
+
     const threshold = parseInt(document.getElementById('threshold').value);
     const needsCollection = bins.some(b => b.fillLevel >= threshold);
-    
+
     if (needsCollection) {
         route.style.display = 'block';
         route.classList.add('route-anim');
@@ -299,21 +299,21 @@ function tick() {
     simSeconds++;
     const speed = parseInt(document.getElementById('speed').value);
     const weather = document.getElementById('weather-select').value;
-    
+
     bins.forEach(bin => {
         const alert = bin.tick(speed, weather);
-    if (alert) {
-        addLog(alert.msg, alert.type === 'alert' ? 'warn' : 'danger');
-        if (alert.type === 'alert') {
-            addNotif(`Collection Needed: ${bin.name}`, `Level: ${Math.round(bin.fillLevel)}% - Action required.`);
-            addSMS(`IOT-ALERT: ${bin.name} is ${Math.round(bin.fillLevel)}% full. Route optimization triggered.`);
-            playAlert();
-            if (voiceEnabled) {
-                speak(`Attention. ${bin.name} has reached threshold level. Collection route generated.`);
+        if (alert) {
+            addLog(alert.msg, alert.type === 'alert' ? 'warn' : 'danger');
+            if (alert.type === 'alert') {
+                addNotif(`Collection Needed: ${bin.name}`, `Level: ${Math.round(bin.fillLevel)}% - Action required.`);
+                addSMS(`IOT-ALERT: ${bin.name} is ${Math.round(bin.fillLevel)}% full. Route optimization triggered.`);
+                playAlert();
+                if (voiceEnabled) {
+                    speak(`Attention. ${bin.name} has reached threshold level. Collection route generated.`);
+                }
             }
         }
-    }
-});
+    });
 
     updateDisplay();
 }
@@ -338,7 +338,7 @@ function emptyAllBins() {
         if (bin.fillLevel >= 50) count++;
         bin.empty();
     });
-    
+
     if (count > 0) {
         SAVINGS_DATA.collections += count;
         SAVINGS_DATA.co2 += count * 0.5; // 0.5kg per trip saved
@@ -388,14 +388,14 @@ function addBin() {
     }
     const id = bins.length + 1;
     const names = ["Main Entrance", "Cafeteria", "Parking Lot"];
-    bins.push(new Bin(id, names[id-1] || `Zone ${id}`));
+    bins.push(new Bin(id, names[id - 1] || `Zone ${id}`));
     renderBins();
     updateDisplay();
     addLog(`New IoT Node connected: Bin #${id}`, 'success');
-    
+
     // Show map element
-    const dot = document.getElementById(`map-dot-${id-1}`);
-    const text = document.getElementById(`map-text-${id-1}`);
+    const dot = document.getElementById(`map-dot-${id - 1}`);
+    const text = document.getElementById(`map-text-${id - 1}`);
     if (dot) dot.style.display = 'block';
     if (text) text.style.display = 'block';
     saveState();
@@ -412,10 +412,10 @@ function removeBin(index) {
 
         addLog(`IoT Node disconnected: ${bin.name}`, 'danger');
         bins.splice(index, 1);
-        
+
         // Update IDs of remaining bins to keep them sequential
         bins.forEach((b, i) => b.id = i + 1);
-        
+
         renderBins();
         updateDisplay();
         saveState();
@@ -665,22 +665,22 @@ function playAlert() {
             audioContext.resume();
         }
         const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    oscillator.frequency.value = 800;
-    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-    oscillator.start();
-    oscillator.stop(audioContext.currentTime + 0.3);
+        const gainNode = audioContext.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        oscillator.frequency.value = 800;
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+        oscillator.stop(audioContext.currentTime + 0.3);
+    } catch (e) {
+        console.error("Audio error:", e);
+    }
 }
 
 function toggleDarkMode() {
     darkMode = !darkMode;
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
     saveState();
-}
-
 function exportData() {
     const data = {
         timestamp: new Date().toISOString(),
@@ -725,7 +725,7 @@ function loadState() {
     if (!saved) return;
     try {
         const state = JSON.parse(saved);
-        
+
         // Restore bins
         bins = state.bins.map(bData => {
             const b = new Bin(bData.id, bData.name, bData.threshold);
@@ -812,7 +812,7 @@ function applyTranslations() {
         const key = el.getAttribute('data-i18n');
         if (t[key]) el.textContent = t[key];
     });
-    
+
     // Update button texts specifically
     document.getElementById('btn-start').textContent = t.start_all;
     const btnPause = document.getElementById('btn-pause');
@@ -823,7 +823,7 @@ function toggleLiveMode() {
     isLiveMode = !isLiveMode;
     const btn = document.getElementById('btn-mode');
     const text = document.getElementById('mode-text');
-    
+
     if (isLiveMode) {
         btn.textContent = 'Switch to SIM';
         btn.style.background = 'var(--color-success)';
@@ -854,3 +854,4 @@ window.onload = () => {
     updateDisplay();
     addLog('System Core v2.1 (Persistent) Initialized', 'success');
 };
+ };
