@@ -661,8 +661,23 @@ function copyFirmware() {
 
 function speak(text) {
     if ('speechSynthesis' in window) {
+        // Cancel any ongoing speech to prevent queuing issues
+        window.speechSynthesis.cancel();
+        
         const msg = new SpeechSynthesisUtterance(text);
-        msg.lang = currentLang === 'ha' ? 'ha-NG' : 'en-US';
+        
+        // Voice selection logic
+        const voices = window.speechSynthesis.getVoices();
+        if (currentLang === 'ha') {
+            msg.lang = 'ha-NG';
+            // Fallback if Hausa isn't available
+            msg.onerror = () => { msg.lang = 'en-US'; };
+        } else {
+            msg.lang = 'en-US';
+        }
+        
+        msg.rate = 0.9; // Slightly slower for clarity
+        msg.pitch = 1;
         window.speechSynthesis.speak(msg);
     }
 }
@@ -694,6 +709,7 @@ function playAlert() {
         oscillator.frequency.value = 800;
         gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
         gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+        oscillator.start();
         oscillator.stop(audioContext.currentTime + 0.3);
     } catch (e) {
         console.error("Audio error:", e);
@@ -704,6 +720,7 @@ function toggleDarkMode() {
     darkMode = !darkMode;
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
     saveState();
+}
 function exportData() {
     const data = {
         timestamp: new Date().toISOString(),
