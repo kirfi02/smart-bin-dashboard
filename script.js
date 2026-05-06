@@ -54,7 +54,7 @@ const startHour = 9, startMin = 0;
 let darkMode = false;
 let chartInstance = null;
 const BIN_DEPTH_CM = 30;
-const ADMIN_PHONE = "+2347031447933";
+const ADMIN_PHONE = "+2348144846867";
 
 // DOM Elements
 const binsContainer = document.getElementById('bins-container');
