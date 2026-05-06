@@ -568,6 +568,64 @@ pre {
 }
 
 /* Responsiveness Update */
+@keyframes routeFlow {
+  from { stroke-dashoffset: 20; }
+  to { stroke-dashoffset: 0; }
+}
+
+.route-anim {
+  animation: routeFlow 1s linear infinite;
+}
+
+#btn-voice.active {
+  background: var(--color-success);
+  color: white;
+  border-color: var(--color-success);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+}
+
+.api-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+
+.api-tab {
+  font-size: 10px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: rgba(0,0,0,0.05);
+  cursor: pointer;
+  border: 1px solid var(--color-glass-border);
+}
+
+.api-tab.active {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+.schematic-view {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wire-label {
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
 @media (max-width: 1200px) {
   .sim {
     grid-template-columns: 1fr 1fr;

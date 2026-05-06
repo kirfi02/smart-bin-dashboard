@@ -10,13 +10,26 @@ class Bin {
         this.lidOpen = false;
         this.proximityDistance = 100;
         this.history = [];
+        this.lastFillLevel = 0;
+        this.fillRate = 0;
+        this.health = 100;
+        this.maintenanceMode = false;
     }
 
     tick(speed, weather = 'sunny') {
+        if (this.maintenanceMode) return null;
+        
         if (this.fillLevel < 100) {
             let fillFactor = weather === 'rainy' ? 1.5 : 1.0;
-            this.fillLevel = Math.min(100, this.fillLevel + speed * (0.2 + Math.random() * 0.3) * fillFactor);
+            const increment = speed * (0.2 + Math.random() * 0.3) * fillFactor;
+            this.lastFillLevel = this.fillLevel;
+            this.fillLevel = Math.min(100, this.fillLevel + increment);
+            this.fillRate = this.fillLevel - this.lastFillLevel;
+            
             this.batteryLevel = Math.max(0, this.batteryLevel - 0.005);
+            
+            // Random health degradation
+            if (Math.random() < 0.01) this.health = Math.max(0, this.health - Math.random() * 5);
             
             let tempBase = weather === 'sunny' ? 28 : 18;
             this.temperature += (tempBase - this.temperature) * 0.1 + (Math.random() - 0.5) * 0.2;
@@ -44,6 +57,20 @@ class Bin {
         this.fillLevel = 0;
         this.alertSent = false;
     }
+
+    getEstimatedTime(threshold) {
+        if (this.fillLevel >= threshold) return "NOW";
+        if (this.fillRate <= 0) return "∞";
+        const remaining = threshold - this.fillLevel;
+        const ticks = remaining / this.fillRate;
+        // 1 tick = 500ms in real time, but let's call it "Sim Mins"
+        return Math.ceil(ticks) + "m";
+    }
+
+    repair() {
+        this.health = 100;
+        this.maintenanceMode = false;
+    }
 }
 
 let bins = [new Bin(1, "Main Entrance")];
@@ -55,6 +82,73 @@ let darkMode = false;
 let chartInstance = null;
 const BIN_DEPTH_CM = 30;
 const ADMIN_PHONE = "+2348144846867";
+
+const TRANSLATIONS = {
+    en: {
+        system_overview: "System Overview",
+        control_center: "Control Center",
+        fill_speed: "Fill Speed",
+        threshold: "Threshold",
+        weather: "Weather",
+        language: "Language",
+        start_all: "Start All",
+        pause: "Pause",
+        resume: "Resume",
+        enable_alerts: "Enable Alerts",
+        empty_all: "Empty All",
+        reset_sys: "Reset Sys",
+        theme: "Theme",
+        export: "Export",
+        distance: "Distance",
+        battery: "Battery",
+        sensor_health: "Sensor Health",
+        prediction: "Prediction",
+        service: "Service",
+        repair: "Repair",
+        end_maintenance: "End Maintenance",
+        mobile_app: "Mobile App Interface",
+        gsm_comms: "GSM / Cloud Comms",
+        event_log: "System Event Log",
+        map_title: "Smart City Real-time Map"
+    },
+    ha: {
+        system_overview: "Bayanin Tsarin",
+        control_center: "Wurin Sarrafawa",
+        fill_speed: "Gudun Cika",
+        threshold: "Iyaka",
+        weather: "Yanayi",
+        language: "Harshe",
+        start_all: "Fara Duka",
+        pause: "Dakata",
+        resume: "Ci gaba",
+        enable_alerts: "Kunna Sanarwa",
+        empty_all: "Zubar da Duka",
+        reset_sys: "Sake Tsarin",
+        theme: "Launi",
+        export: "Fitar da Bayani",
+        distance: "Nisa",
+        battery: "Baturi",
+        sensor_health: "Lafiyar Na'ura",
+        prediction: "Hasashe",
+        service: "Gyara",
+        repair: "Gyara",
+        end_maintenance: "Gama Gyara",
+        mobile_app: "Wayar Hannu",
+        gsm_comms: "Sadarwar GSM",
+        event_log: "Rikodin Tsarin",
+        map_title: "Taswirar Birni"
+    }
+};
+
+const SAVINGS_DATA = {
+    co2: 0,
+    fuel: 0,
+    collections: 0
+};
+
+let currentLang = 'en';
+let voiceEnabled = false;
+let isLiveMode = false;
 
 // DOM Elements
 const binsContainer = document.getElementById('bins-container');
@@ -152,30 +246,63 @@ function updateDisplay() {
         } else {
             lidEl.style.transform = '';
         }
+
+        // Update prediction and health
+        const predictEl = document.getElementById(`predict-${index}`);
+        const healthEl = document.getElementById(`health-val-${index}`);
+        const threshold = parseInt(document.getElementById('threshold').value);
+        
+        if (predictEl) {
+            predictEl.textContent = bin.maintenanceMode ? 'N/A' : `Est. Full: ${bin.getEstimatedTime(threshold)}`;
+        }
+        if (healthEl) {
+            healthEl.textContent = Math.round(bin.health) + '%';
+            healthEl.style.color = bin.health < 30 ? 'var(--color-danger)' : 'var(--color-text-secondary)';
+        }
     });
 
     phoneTimeEl.textContent = getSimTime();
     updateChart();
     updateFirmwareCode();
+    updateRoute();
+}
+
+function updateRoute() {
+    const route = document.getElementById('collection-route');
+    if (!route) return;
+    
+    const threshold = parseInt(document.getElementById('threshold').value);
+    const needsCollection = bins.some(b => b.fillLevel >= threshold);
+    
+    if (needsCollection) {
+        route.style.display = 'block';
+        route.classList.add('route-anim');
+    } else {
+        route.style.display = 'none';
+        route.classList.remove('route-anim');
+    }
 }
 
 function tick() {
-    if (!running) return;
+    if (!running || isLiveMode) return;
     simSeconds++;
     const speed = parseInt(document.getElementById('speed').value);
     const weather = document.getElementById('weather-select').value;
     
     bins.forEach(bin => {
         const alert = bin.tick(speed, weather);
-        if (alert) {
-            addLog(alert.msg, alert.type === 'alert' ? 'warn' : 'danger');
-            if (alert.type === 'alert') {
-                addNotif(`Collection Needed: ${bin.name}`, `Level: ${Math.round(bin.fillLevel)}% - Action required.`);
-                addSMS(`IOT-ALERT: ${bin.name} is ${Math.round(bin.fillLevel)}% full. Route optimization triggered.`);
-                playAlert();
+    if (alert) {
+        addLog(alert.msg, alert.type === 'alert' ? 'warn' : 'danger');
+        if (alert.type === 'alert') {
+            addNotif(`Collection Needed: ${bin.name}`, `Level: ${Math.round(bin.fillLevel)}% - Action required.`);
+            addSMS(`IOT-ALERT: ${bin.name} is ${Math.round(bin.fillLevel)}% full. Route optimization triggered.`);
+            playAlert();
+            if (voiceEnabled) {
+                speak(`Attention. ${bin.name} has reached threshold level. Collection route generated.`);
             }
         }
-    });
+    }
+});
 
     updateDisplay();
 }
@@ -195,7 +322,19 @@ function pauseSim() {
 }
 
 function emptyAllBins() {
-    bins.forEach(bin => bin.empty());
+    let count = 0;
+    bins.forEach(bin => {
+        if (bin.fillLevel >= 50) count++;
+        bin.empty();
+    });
+    
+    if (count > 0) {
+        SAVINGS_DATA.collections += count;
+        SAVINGS_DATA.co2 += count * 0.5; // 0.5kg per trip saved
+        SAVINGS_DATA.fuel += count * 1.2; // $1.2 saved per trip
+        updateSavingsUI();
+    }
+
     addLog('All bins emptied by sanitation crew', 'success');
     addNotif('Collection Complete', 'All reported bins have been cleared.');
     updateDisplay();
@@ -216,6 +355,10 @@ function resetSim() {
     btnStart.style.display = 'inline-block';
     btnPause.style.display = 'none';
     addLog('System Hardware Reset', 'danger');
+    SAVINGS_DATA.co2 = 0;
+    SAVINGS_DATA.fuel = 0;
+    SAVINGS_DATA.collections = 0;
+    updateSavingsUI();
     saveState();
 }
 
@@ -283,6 +426,18 @@ function renderBins() {
                     <span class="stat-mini-val" id="battery-val-${i}">100%</span>
                     <span class="stat-mini-label">Battery</span>
                 </div>
+                <div class="stat-mini">
+                    <span class="stat-mini-val" id="health-val-${i}">100%</span>
+                    <span class="stat-mini-label">Sensor Health</span>
+                </div>
+                <div class="stat-mini">
+                    <span class="stat-mini-val" id="predict-${i}">-</span>
+                    <span class="stat-mini-label">Prediction</span>
+                </div>
+            </div>
+            <div class="btn-row" style="margin-top: 10px;">
+                <button class="btn-mini" onclick="toggleMaintenance(${i})">${bin.maintenanceMode ? 'End Maintenance' : 'Service'}</button>
+                ${bin.health < 100 ? `<button class="btn-mini btn-success" onclick="repairBin(${i})">Repair</button>` : ''}
             </div>
         `;
         binsContainer.appendChild(card);
@@ -300,6 +455,26 @@ function onMouseLeaveBin(index) {
     if (bins[index]) {
         bins[index].lidOpen = false;
         updateDisplay();
+    }
+}
+
+function toggleMaintenance(index) {
+    if (bins[index]) {
+        bins[index].maintenanceMode = !bins[index].maintenanceMode;
+        addLog(`${bins[index].name} ${bins[index].maintenanceMode ? 'entered' : 'exited'} maintenance mode`, 'warn');
+        renderBins();
+        updateDisplay();
+        saveState();
+    }
+}
+
+function repairBin(index) {
+    if (bins[index]) {
+        bins[index].repair();
+        addLog(`${bins[index].name} sensor recalibrated and repaired`, 'success');
+        renderBins();
+        updateDisplay();
+        saveState();
     }
 }
 
@@ -336,18 +511,38 @@ function updateChart() {
 
 function updateFirmwareCode() {
     const thresh = document.getElementById('threshold').value;
+    const mode = isLiveMode ? 'REAL_TIME_WIFI' : 'SIMULATION_ONLY';
     const code = `
+/* 
+ * SMART BIN PROJECT - ${mode}
+ * Hardware: ESP32 + HC-SR04 Ultrasonic Sensor
+ * Integrated Cloud: Firebase / Custom REST API
+ */
+
 #include <WiFi.h>
 #include <HTTPClient.h>
+
+// NETWORK SETTINGS
+const char* ssid = "YOUR_WIFI_SSID";
+const char* password = "YOUR_WIFI_PASSWORD";
+const char* serverUrl = "https://your-api-endpoint.com/update";
 
 const int TRIG_PIN = 5;
 const int ECHO_PIN = 18;
 const float DISTANCE_THRESHOLD = ${thresh}.0; // Percent full
+const float BIN_DEPTH = 30.0; // cm
 
 void setup() {
   Serial.begin(115200);
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
+
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("WiFi Connected!");
 }
 
 void loop() {
@@ -362,25 +557,24 @@ void loop() {
   duration = pulseIn(ECHO_PIN, HIGH);
   distance = duration * 0.034 / 2;
   
-  float fillPercent = 100 * (1 - (distance / 30.0));
+  float fillPercent = 100 * (1 - (distance / BIN_DEPTH));
+  if (fillPercent < 0) fillPercent = 0;
+  if (fillPercent > 100) fillPercent = 100;
+
+  Serial.printf("Fill Level: %.2f%%\\n", fillPercent);
   
-  if (fillPercent >= DISTANCE_THRESHOLD) {
-    sendCloudAlert(fillPercent);
+  // Send data to Cloud
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    http.begin(serverUrl);
+    http.addHeader("Content-Type", "application/json");
+    
+    String payload = "{\\"bin_id\\": 1, \\"level\\": " + String(fillPercent) + "}";
+    int httpResponseCode = http.POST(payload);
+    http.end();
   }
   
-  delay(5000); // 5s interval
-}
-
-void sendCloudAlert(float pct) {
-  // AT command logic for SIM800L
-  Serial.println("AT+CMGF=1"); // Set SMS mode
-  delay(100);
-  Serial.println("AT+CMGS=\"${ADMIN_PHONE}\"");
-  delay(100);
-  Serial.print("ALERT: Bin full at ");
-  Serial.print(pct);
-  Serial.println("%");
-  Serial.write(26); // Ctrl+Z to send
+  delay(10000); // Send update every 10s
 }
     `;
     firmwareCodeEl.textContent = code.trim();
@@ -389,6 +583,28 @@ void sendCloudAlert(float pct) {
 function copyFirmware() {
     navigator.clipboard.writeText(firmwareCodeEl.textContent);
     alert("Firmware code copied to clipboard!");
+}
+
+function speak(text) {
+    if ('speechSynthesis' in window) {
+        const msg = new SpeechSynthesisUtterance(text);
+        msg.lang = currentLang === 'ha' ? 'ha-NG' : 'en-US';
+        window.speechSynthesis.speak(msg);
+    }
+}
+
+function toggleVoice() {
+    voiceEnabled = !voiceEnabled;
+    addLog(`AI Voice Alerts: ${voiceEnabled ? 'ON' : 'OFF'}`, 'info');
+    document.getElementById('btn-voice').classList.toggle('active', voiceEnabled);
+    saveState();
+}
+
+function updateSavingsUI() {
+    const co2El = document.getElementById('savings-co2');
+    const fuelEl = document.getElementById('savings-fuel');
+    if (co2El) co2El.textContent = SAVINGS_DATA.co2.toFixed(1) + ' kg';
+    if (fuelEl) fuelEl.textContent = '$' + SAVINGS_DATA.fuel.toFixed(1);
 }
 
 function playAlert() {
@@ -432,9 +648,15 @@ function saveState() {
             fillLevel: b.fillLevel,
             batteryLevel: b.batteryLevel,
             threshold: b.threshold,
-            history: b.history
+            history: b.history,
+            health: b.health,
+            maintenanceMode: b.maintenanceMode
         })),
         darkMode,
+        lang: currentLang,
+        voiceEnabled,
+        isLiveMode,
+        savings: SAVINGS_DATA,
         speed: document.getElementById('speed').value,
         threshold: document.getElementById('threshold').value,
         simSeconds,
@@ -455,6 +677,8 @@ function loadState() {
             b.fillLevel = bData.fillLevel;
             b.batteryLevel = bData.batteryLevel;
             b.history = bData.history || [];
+            b.health = bData.health !== undefined ? bData.health : 100;
+            b.maintenanceMode = bData.maintenanceMode || false;
             return b;
         });
 
@@ -480,6 +704,29 @@ function loadState() {
 
         renderBins();
         updateDisplay();
+        if (state.lang) {
+            currentLang = state.lang;
+            document.getElementById('lang-select').value = currentLang;
+            applyTranslations();
+        }
+        if (state.voiceEnabled) {
+            voiceEnabled = state.voiceEnabled;
+            document.getElementById('btn-voice').classList.toggle('active', voiceEnabled);
+        }
+        if (state.savings) {
+            Object.assign(SAVINGS_DATA, state.savings);
+            updateSavingsUI();
+        }
+        if (state.isLiveMode !== undefined) {
+            isLiveMode = state.isLiveMode;
+            const btn = document.getElementById('btn-mode');
+            const text = document.getElementById('mode-text');
+            if (isLiveMode) {
+                btn.textContent = 'Switch to SIM';
+                btn.style.background = 'var(--color-success)';
+                text.textContent = 'LIVE HARDWARE';
+            }
+        }
     } catch (e) {
         console.error("Failed to load state", e);
     }
@@ -495,6 +742,54 @@ document.getElementById('threshold').oninput = e => {
     updateFirmwareCode();
     saveState();
 };
+
+function changeLanguage() {
+    currentLang = document.getElementById('lang-select').value;
+    applyTranslations();
+    renderBins();
+    updateDisplay();
+    saveState();
+}
+
+function applyTranslations() {
+    const t = TRANSLATIONS[currentLang];
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (t[key]) el.textContent = t[key];
+    });
+    
+    // Update button texts specifically
+    document.getElementById('btn-start').textContent = t.start_all;
+    const btnPause = document.getElementById('btn-pause');
+    if (btnPause) btnPause.textContent = running ? t.pause : t.resume;
+}
+
+function toggleLiveMode() {
+    isLiveMode = !isLiveMode;
+    const btn = document.getElementById('btn-mode');
+    const text = document.getElementById('mode-text');
+    
+    if (isLiveMode) {
+        btn.textContent = 'Switch to SIM';
+        btn.style.background = 'var(--color-success)';
+        text.textContent = 'LIVE HARDWARE';
+        addLog('Dashboard switched to LIVE HARDWARE mode', 'warn');
+        addNotif('Hardware Mode Active', 'Dashboard is now listening for real IoT data (Simulated fetch).');
+    } else {
+        btn.textContent = 'Switch to LIVE';
+        btn.style.background = 'var(--color-primary)';
+        text.textContent = 'SIMULATION';
+        addLog('Dashboard switched to SIMULATION mode', 'info');
+    }
+    updateFirmwareCode();
+    saveState();
+}
+
+function toggleSchematic() {
+    const container = document.getElementById('schematic-container');
+    const visible = container.style.display === 'block';
+    container.style.display = visible ? 'none' : 'block';
+}
 
 // Init
 window.onload = () => {

@@ -24,7 +24,7 @@
         <!-- Sidebar: Bins and Global Controls -->
         <aside style="grid-area: sidebar; display: flex; flex-direction: column; gap: 20px;">
             <div class="panel">
-                <div class="panel-title">System Overview <span class="status-indicator pulsing"></span></div>
+                <div class="panel-title"><span data-i18n="system_overview">System Overview</span> <span class="status-indicator pulsing"></span></div>
                 <div id="bins-container" style="display: flex; flex-direction: column; gap: 16px;">
                     <!-- Bins will be injected here by JS -->
                     <div class="bin-card active" id="bin-1-card">
@@ -64,34 +64,61 @@
             </div>
 
             <div class="panel">
-                <div class="panel-title">Control Center</div>
+                <div class="panel-title" data-i18n="control_center">Control Center</div>
+                <div class="slider-row" style="background: rgba(59, 130, 246, 0.1); padding: 8px; border-radius: 8px; margin-bottom: 12px; border: 1px solid var(--color-primary);">
+                    <span style="font-weight: 700; color: var(--color-primary);">MODE: <span id="mode-text">SIMULATION</span></span>
+                    <button class="btn-mini" onclick="toggleLiveMode()" id="btn-mode" style="margin-left: auto; background: var(--color-primary); color: white;">Switch to LIVE</button>
+                </div>
                 <div class="slider-row">
-                    <span>Fill Speed</span>
+                    <span data-i18n="fill_speed">Fill Speed</span>
                     <input type="range" id="speed" min="1" max="10" value="3" step="1">
                     <span id="speed-out">3x</span>
                 </div>
                 <div class="slider-row">
-                    <span>Threshold</span>
+                    <span data-i18n="threshold">Threshold</span>
                     <input type="range" id="threshold" min="50" max="95" value="80" step="5">
                     <span id="thresh-out">80%</span>
                 </div>
                 <div class="slider-row">
-                    <span>Weather</span>
+                    <span data-i18n="weather">Weather</span>
                     <select id="weather-select" onchange="updateWeather()" style="flex: 1; background: transparent; border: 1px solid var(--color-glass-border); color: var(--color-text-primary); border-radius: 4px; padding: 2px;">
                         <option value="sunny">☀️ Sunny</option>
                         <option value="rainy">🌧️ Rainy</option>
                     </select>
                 </div>
+                <div class="slider-row">
+                    <span data-i18n="language">Language</span>
+                    <select id="lang-select" onchange="changeLanguage()" style="flex: 1; background: transparent; border: 1px solid var(--color-glass-border); color: var(--color-text-primary); border-radius: 4px; padding: 2px;">
+                        <option value="en">🇺🇸 English</option>
+                        <option value="ha">🇳🇬 Hausa</option>
+                    </select>
+                </div>
                 <div class="btn-grid">
-                    <button id="btn-start" class="btn-success" onclick="startSim()">Start All</button>
-                    <button id="btn-pause" onclick="pauseSim()" style="display:none">Pause</button>
-                    <button onclick="requestNotificationPermission()" class="btn-success">Enable Alerts</button>
-                    <button onclick="emptyAllBins()" class="btn-danger">Empty All</button>
-                    <button onclick="resetSim()" class="btn-danger">Reset Sys</button>
-                    <button onclick="toggleDarkMode()">Theme</button>
-                    <button onclick="exportData()">Export</button>
+                    <button id="btn-start" class="btn-success" onclick="startSim()" data-i18n="start_all">Start All</button>
+                    <button id="btn-pause" onclick="pauseSim()" style="display:none" data-i18n="pause">Pause</button>
+                    <button onclick="requestNotificationPermission()" class="btn-success" data-i18n="enable_alerts">Enable Alerts</button>
+                    <button onclick="emptyAllBins()" class="btn-danger" data-i18n="empty_all">Empty All</button>
+                    <button onclick="resetSim()" class="btn-danger" data-i18n="reset_sys">Reset Sys</button>
+                    <button onclick="toggleDarkMode()" data-i18n="theme">Theme</button>
+                    <button onclick="exportData()" data-i18n="export">Export</button>
+                    <button id="btn-voice" onclick="toggleVoice()" style="grid-column: span 2;">🎙️ AI Voice Alerts</button>
                 </div>
             </div>
+
+            <div class="panel">
+                <div class="panel-title">Sustainability Impact</div>
+                <div class="stat-grid">
+                    <div class="stat-mini">
+                        <span class="stat-mini-val" id="savings-co2">0.0 kg</span>
+                        <span class="stat-mini-label">CO2 Saved</span>
+                    </div>
+                    <div class="stat-mini">
+                        <span class="stat-mini-val" id="savings-fuel">$0.0</span>
+                        <span class="stat-mini-label">Fuel Saved</span>
+                    </div>
+                </div>
+            </div>
+
             <div style="margin-top: auto; padding: 10px; font-size: 11px; color: var(--color-text-tertiary); text-align: center; border-top: 1px solid var(--color-glass-border);">
                 Designed & Developed by<br>
                 <strong style="color: var(--color-text-secondary)">Adama Muhammad Seyoji</strong>
@@ -101,11 +128,15 @@
         <!-- Main Area: Map and Charts -->
         <main style="grid-area: main; display: flex; flex-direction: column; gap: 20px;">
             <div class="panel map-panel" style="flex: 1; position: relative;">
-                <div class="panel-title">Smart City Real-time Map</div>
+                <div class="panel-title" data-i18n="map_title">Smart City Real-time Map</div>
                 <div id="map-container" style="height: 100%; min-height: 400px; background: rgba(0,0,0,0.05); border-radius: 12px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
                     <!-- Map SVG will be here -->
                     <svg width="100%" height="100%" viewBox="0 0 800 500" style="max-width: 100%;">
                         <path d="M100,100 L700,100 L700,400 L100,400 Z" fill="none" stroke="var(--color-text-tertiary)" stroke-dasharray="4 4" />
+                        <path id="collection-route" d="M100,400 L200,200 L500,150 L100,400" fill="none" stroke="var(--color-primary)" stroke-width="3" stroke-dasharray="10 5" style="display:none; opacity: 0.6;" />
+                        <circle cx="100" cy="400" r="12" fill="var(--color-text-tertiary)" /> <!-- Depot -->
+                        <text x="100" y="430" text-anchor="middle" font-size="10" fill="var(--color-text-tertiary)">Sanitation Depot</text>
+                        
                         <circle cx="200" cy="200" r="10" id="map-dot-0" fill="var(--color-success)" />
                         <text x="200" y="225" text-anchor="middle" font-size="10" fill="var(--color-text-secondary)">Bin #1</text>
                         <circle cx="500" cy="150" r="10" id="map-dot-1" fill="var(--color-success)" style="display:none" />
@@ -121,6 +152,33 @@
                 </div>
             </div>
 
+            <div class="panel api-panel">
+                <div class="panel-title">Developer API Access (Mock)</div>
+                <div class="api-tabs">
+                    <div class="api-tab active">GET /bins</div>
+                    <div class="api-tab">POST /collection</div>
+                </div>
+                <pre id="api-code" style="background: rgba(0,0,0,0.1); padding: 12px; border-radius: 8px; font-size: 11px; color: var(--color-text-primary); margin-top: 10px;">curl -X GET "https://api.smartbin.io/v1/bins" \
+  -H "Authorization: Bearer YOUR_TOKEN"</pre>
+            </div>
+
+            <div class="panel hardware-panel">
+                <div class="panel-title">Hardware Integration Guide</div>
+                <div id="schematic-container" style="background: rgba(0,0,0,0.05); border-radius: 12px; padding: 15px; margin-bottom: 10px; display: none;">
+                    <div style="font-size: 12px; margin-bottom: 10px; font-weight: 600;">ESP32 + HC-SR04 Wiring:</div>
+                    <div class="schematic-view">
+                        <div class="wire-label"><span class="dot" style="background:red"></span> VCC -> 5V</div>
+                        <div class="wire-label"><span class="dot" style="background:black"></span> GND -> GND</div>
+                        <div class="wire-label"><span class="dot" style="background:blue"></span> Trig -> GPIO 5</div>
+                        <div class="wire-label"><span class="dot" style="background:yellow"></span> Echo -> GPIO 18</div>
+                    </div>
+                </div>
+                <button onclick="toggleSchematic()" class="btn-mini" style="width: 100%;">Show Wiring Diagram</button>
+                <div style="font-size: 10px; color: var(--color-text-tertiary); margin-top: 8px; line-height: 1.4;">
+                    *Ready to build? Use the <strong>Firmware Snippet</strong> below for your ESP32.
+                </div>
+            </div>
+
             <div class="panel firmware-panel">
                 <div class="panel-title">Arduino Firmware Snippet (ESP32)</div>
                 <pre id="firmware-code" style="background: rgba(0,0,0,0.1); padding: 12px; border-radius: 8px; font-size: 11px; max-height: 200px; overflow-y: auto; color: var(--color-text-primary);">// Loading firmware generator...</pre>
@@ -131,7 +189,7 @@
         <!-- Status Area: Comms and Logs -->
         <section style="grid-area: status; display: flex; flex-direction: column; gap: 20px;">
             <div class="panel">
-                <div class="panel-title">Mobile App Interface</div>
+                <div class="panel-title" data-i18n="mobile_app">Mobile App Interface</div>
                 <div class="phone-frame">
                     <div class="phone-bar">
                         <span id="phone-time">09:00</span>
@@ -144,7 +202,7 @@
             </div>
 
             <div class="panel">
-                <div class="panel-title">GSM / Cloud Comms</div>
+                <div class="panel-title" data-i18n="gsm_comms">GSM / Cloud Comms</div>
                 <div class="gsm-panel">
                     <div class="gsm-row"><span>SIM800L</span><span id="gsm-status">Connected</span></div>
                     <div class="gsm-row"><span>Target</span><span style="color:var(--color-success)">+2348144846867</span></div>
@@ -156,7 +214,7 @@
 
             <div class="panel" style="flex: 1;">
                 <div class="panel-title">
-                    System Event Log
+                    <span data-i18n="event_log">System Event Log</span>
                     <button onclick="clearLogs()" class="btn-mini" style="border:none; opacity:0.6; padding:2px 6px;">Clear</button>
                 </div>
                 <div class="log" id="log" style="max-height: 300px;"></div>
