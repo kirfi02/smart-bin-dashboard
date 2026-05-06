@@ -1,0 +1,327 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans)}
+.sim{padding:1rem;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:12px}
+.panel{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;padding:14px}
+.panel-title{font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-tertiary);margin-bottom:12px}
+.bin-wrap{display:flex;flex-direction:column;align-items:center;gap:8px}
+.bin-outer{width:90px;height:160px;border:2px solid var(--color-border-primary);border-top:none;border-radius:0 0 14px 14px;position:relative;overflow:hidden;background:var(--color-background-secondary)}
+.bin-fill{position:absolute;bottom:0;left:0;right:0;transition:height .4s ease;border-radius:0 0 12px 12px}
+.bin-top{width:100px;height:10px;border:2px solid var(--color-border-primary);border-radius:4px 4px 0 0;margin-bottom:0}
+.bin-lid{width:110px;height:14px;border:2px solid var(--color-border-primary);border-radius:6px;transition:transform .3s ease;transform-origin:center bottom}
+.sensor-beam{position:absolute;top:0;left:50%;transform:translateX(-50%);width:2px;background:var(--color-text-warning);transition:height .4s ease;opacity:.7}
+.sensor-dot{width:8px;height:8px;border-radius:50%;background:var(--color-text-warning);position:absolute;top:-4px;left:50%;transform:translateX(-50%)}
+.fill-pct{font-size:28px;font-weight:500;color:var(--color-text-primary)}
+.fill-label{font-size:11px;color:var(--color-text-secondary)}
+.stat-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.stat{background:var(--color-background-secondary);border-radius:8px;padding:8px 10px}
+.stat-val{font-size:18px;font-weight:500;color:var(--color-text-primary)}
+.stat-key{font-size:10px;color:var(--color-text-tertiary);margin-top:1px}
+.status-badge{display:inline-block;font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px;margin-bottom:10px}
+.btn-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+button{font-size:12px;padding:6px 12px;border-radius:6px;border:0.5px solid var(--color-border-secondary);background:transparent;color:var(--color-text-primary);cursor:pointer}
+button:hover{background:var(--color-background-secondary)}
+button:active{transform:scale(.98)}
+.btn-danger{border-color:var(--color-border-danger);color:var(--color-text-danger)}
+.btn-success{border-color:var(--color-border-success);color:var(--color-text-success)}
+.slider-row{display:flex;align-items:center;gap:8px;margin:8px 0;font-size:12px;color:var(--color-text-secondary)}
+.slider-row input{flex:1}
+.slider-row span{min-width:32px;text-align:right;font-weight:500;color:var(--color-text-primary)}
+.log{border-radius:8px;overflow:hidden;border:0.5px solid var(--color-border-tertiary);max-height:220px;overflow-y:auto}
+.log-entry{padding:7px 10px;font-size:12px;display:flex;gap:8px;align-items:flex-start;border-bottom:0.5px solid var(--color-border-tertiary)}
+.log-entry:last-child{border-bottom:none}
+.log-time{color:var(--color-text-tertiary);min-width:44px;font-size:11px;margin-top:1px}
+.log-msg{color:var(--color-text-secondary);line-height:1.4}
+.log-tag{font-size:10px;font-weight:500;padding:2px 6px;border-radius:4px;flex-shrink:0}
+.phone-frame{width:100%;border:1.5px solid var(--color-border-secondary);border-radius:20px;overflow:hidden;background:var(--color-background-secondary)}
+.phone-bar{background:var(--color-background-primary);padding:8px 14px;font-size:12px;font-weight:500;border-bottom:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;gap:6px}
+.phone-content{padding:10px}
+.notif{background:var(--color-background-primary);border-radius:10px;padding:10px 12px;margin-bottom:8px;border:0.5px solid var(--color-border-tertiary)}
+.notif-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+.notif-app{font-size:11px;color:var(--color-text-tertiary)}
+.notif-time{font-size:11px;color:var(--color-text-tertiary)}
+.notif-title{font-size:13px;font-weight:500;color:var(--color-text-primary)}
+.notif-body{font-size:12px;color:var(--color-text-secondary);margin-top:2px}
+.sms-bubble{background:var(--color-background-success);border-radius:10px 10px 2px 10px;padding:8px 12px;margin-bottom:6px;max-width:90%}
+.sms-text{font-size:12px;color:var(--color-text-success)}
+.sms-time{font-size:10px;color:var(--color-text-tertiary);margin-top:3px}
+.gsm-panel{margin-top:8px;background:var(--color-background-secondary);border-radius:8px;padding:10px;font-size:12px}
+.gsm-row{display:flex;justify-content:space-between;padding:3px 0;font-size:11px}
+.gsm-key{color:var(--color-text-secondary)}
+.gsm-val{color:var(--color-text-primary);font-weight:500}
+.signal-dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:2px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.pulsing{animation:pulse .8s ease-in-out infinite}
+</style>
+
+<h2 class="sr-only">Smart dustbin IoT simulation showing fill level, sensor readings, GSM alerts and mobile app notifications</h2>
+
+<div class="sim">
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div class="panel">
+      <div class="panel-title">Dustbin sensor</div>
+      <div class="bin-wrap">
+        <div class="bin-lid" id="lid">
+          <svg width="110" height="14" viewBox="0 0 110 14"><rect x="0" y="0" width="110" height="14" rx="6" fill="none" stroke="var(--color-border-primary)" stroke-width="2"/></svg>
+        </div>
+        <div class="bin-top"></div>
+        <div class="bin-outer" id="bin-outer">
+          <div class="bin-fill" id="bin-fill" style="height:0%;background:var(--color-background-success)"></div>
+          <div class="sensor-beam" id="sensor-beam" style="height:95%"></div>
+          <div class="sensor-dot"></div>
+        </div>
+        <div class="fill-pct" id="fill-pct">0%</div>
+        <div class="fill-label">fill level</div>
+      </div>
+      <div style="margin-top:12px">
+        <div class="stat-row">
+          <div class="stat">
+            <div class="stat-val" id="dist-val">30.0 cm</div>
+            <div class="stat-key">Sensor distance</div>
+          </div>
+          <div class="stat">
+            <div class="stat-val" id="status-val">Empty</div>
+            <div class="stat-key">Bin status</div>
+          </div>
+        </div>
+        <div class="stat-row">
+          <div class="stat">
+            <div class="stat-val" id="alert-count">0</div>
+            <div class="stat-key">SMS alerts sent</div>
+          </div>
+          <div class="stat">
+            <div class="stat-val" id="collect-count">0</div>
+            <div class="stat-key">Collections</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Controls</div>
+      <div class="slider-row">
+        <span style="min-width:80px">Fill speed</span>
+        <input type="range" id="speed" min="1" max="10" value="3" step="1">
+        <span id="speed-out">3x</span>
+      </div>
+      <div class="slider-row">
+        <span style="min-width:80px">Alert threshold</span>
+        <input type="range" id="threshold" min="50" max="95" value="80" step="5">
+        <span id="thresh-out">80%</span>
+      </div>
+      <div class="btn-row">
+        <button id="btn-start" class="btn-success" onclick="startSim()">Start filling</button>
+        <button id="btn-pause" onclick="pauseSim()" style="display:none">Pause</button>
+        <button onclick="emptyBin()" class="btn-danger">Empty bin</button>
+        <button onclick="sendPrompt('Can you show me the Arduino firmware code for this smart dustbin project?')">Get firmware code ↗</button>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div class="panel">
+      <div class="panel-title">Mobile app</div>
+      <div class="phone-frame">
+        <div class="phone-bar">
+          <svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="3" fill="var(--color-text-success)"/></svg>
+          Smart Bin Monitor
+          <span style="margin-left:auto;font-size:10px;color:var(--color-text-tertiary)" id="phone-time">09:00</span>
+        </div>
+        <div class="phone-content" id="notif-list">
+          <div style="font-size:11px;color:var(--color-text-tertiary);text-align:center;padding:20px 0">No notifications yet</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">GSM module (SIM800L)</div>
+      <div class="gsm-panel">
+        <div class="gsm-row"><span class="gsm-key">Status</span><span class="gsm-val" id="gsm-status"><span class="signal-dot" style="background:var(--color-text-success)"></span>Connected</span></div>
+        <div class="gsm-row"><span class="gsm-key">Network</span><span class="gsm-val">MTN NG</span></div>
+        <div class="gsm-row"><span class="gsm-key">Signal</span><span class="gsm-val" id="signal-bars">▮▮▮▮▯</span></div>
+        <div class="gsm-row"><span class="gsm-key">Last SMS to</span><span class="gsm-val">+234 800 XXX XXXX</span></div>
+        <div class="gsm-row"><span class="gsm-key">Last sent</span><span class="gsm-val" id="last-sms">—</span></div>
+      </div>
+      <div style="margin-top:8px">
+        <div style="font-size:11px;color:var(--color-text-tertiary);margin-bottom:6px">SMS inbox simulation</div>
+        <div id="sms-list" style="max-height:100px;overflow-y:auto"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">System log</div>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let fillLevel = 0;
+let simInterval = null;
+let running = false;
+let alertSent = false;
+let alertCount = 0;
+let collectCount = 0;
+let simSeconds = 0;
+let startHour = 9, startMin = 0;
+const BIN_DEPTH_CM = 30;
+
+const fillEl = document.getElementById('bin-fill');
+const pctEl = document.getElementById('fill-pct');
+const distEl = document.getElementById('dist-val');
+const statusEl = document.getElementById('status-val');
+const beamEl = document.getElementById('sensor-beam');
+const lidEl = document.getElementById('lid');
+const alertCountEl = document.getElementById('alert-count');
+const collectCountEl = document.getElementById('collect-count');
+const logEl = document.getElementById('log');
+const notifList = document.getElementById('notif-list');
+const smsList = document.getElementById('sms-list');
+const lastSmsEl = document.getElementById('last-sms');
+const phoneTimeEl = document.getElementById('phone-time');
+const btnStart = document.getElementById('btn-start');
+const btnPause = document.getElementById('btn-pause');
+
+document.getElementById('speed').oninput = function(){document.getElementById('speed-out').textContent=this.value+'x'};
+document.getElementById('threshold').oninput = function(){document.getElementById('thresh-out').textContent=this.value+'%'};
+
+function getThreshold(){return parseInt(document.getElementById('threshold').value)}
+function getSpeed(){return parseInt(document.getElementById('speed').value)}
+
+function simTime(){
+  let total = startMin + simSeconds;
+  let h = (startHour + Math.floor(total/60)) % 24;
+  let m = total % 60;
+  return (h<10?'0':'')+h+':'+(m<10?'0':'')+m;
+}
+
+function addLog(msg, type){
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  const colors = {info:'var(--color-background-info)',warn:'var(--color-background-warning)',danger:'var(--color-background-danger)',success:'var(--color-background-success)'};
+  const textColors = {info:'var(--color-text-info)',warn:'var(--color-text-warning)',danger:'var(--color-text-danger)',success:'var(--color-text-success)'};
+  const labels = {info:'INFO',warn:'WARN',danger:'ALERT',success:'OK'};
+  entry.innerHTML = `<span class="log-time">${simTime()}</span><span class="log-tag" style="background:${colors[type]||colors.info};color:${textColors[type]||textColors.info}">${labels[type]||'INFO'}</span><span class="log-msg">${msg}</span>`;
+  logEl.prepend(entry);
+}
+
+function addNotif(title, body){
+  const empty = notifList.querySelector('div[style*="No notifications"]');
+  if(empty) empty.remove();
+  const n = document.createElement('div');
+  n.className = 'notif';
+  n.innerHTML = `<div class="notif-header"><span class="notif-app">SmartBin App</span><span class="notif-time">${simTime()}</span></div><div class="notif-title">${title}</div><div class="notif-body">${body}</div>`;
+  notifList.prepend(n);
+}
+
+function addSMS(msg){
+  const b = document.createElement('div');
+  b.className = 'sms-bubble';
+  b.innerHTML = `<div class="sms-text">${msg}</div><div class="sms-time">${simTime()}</div>`;
+  smsList.prepend(b);
+  lastSmsEl.textContent = simTime();
+}
+
+function getBinColor(pct){
+  if(pct < 50) return 'var(--color-background-success)';
+  if(pct < 80) return 'var(--color-background-warning)';
+  return 'var(--color-background-danger)';
+}
+
+function getStatusText(pct){
+  if(pct < 20) return 'Empty';
+  if(pct < 50) return 'Low';
+  if(pct < 80) return 'Half full';
+  if(pct < 100) return 'Nearly full';
+  return 'FULL';
+}
+
+function updateDisplay(){
+  const pct = Math.round(fillLevel);
+  const distCm = (BIN_DEPTH_CM * (1 - pct/100)).toFixed(1);
+  fillEl.style.height = pct + '%';
+  fillEl.style.background = getBinColor(pct);
+  pctEl.textContent = pct + '%';
+  pctEl.style.color = pct >= getThreshold() ? 'var(--color-text-danger)' : 'var(--color-text-primary)';
+  distEl.textContent = distCm + ' cm';
+  statusEl.textContent = getStatusText(pct);
+  beamEl.style.height = Math.max(5, 95 - pct) + '%';
+  phoneTimeEl.textContent = simTime();
+  if(pct >= 90){
+    lidEl.style.transform = 'rotate(-15deg) translateY(-6px)';
+  } else {
+    lidEl.style.transform = '';
+  }
+}
+
+function tick(){
+  if(!running) return;
+  simSeconds++;
+  const speed = getSpeed();
+  fillLevel = Math.min(100, fillLevel + speed * 0.4);
+  updateDisplay();
+  const pct = Math.round(fillLevel);
+  const thresh = getThreshold();
+
+  if(pct > 0 && pct % 25 === 0 && !window['logged'+pct]){
+    window['logged'+pct] = true;
+    const type = pct >= thresh ? 'warn' : 'info';
+    addLog(`Ultrasonic: fill level at ${pct}% — distance ${(BIN_DEPTH_CM*(1-pct/100)).toFixed(1)} cm`, type);
+  }
+
+  if(pct >= thresh && !alertSent){
+    alertSent = true;
+    alertCount++;
+    alertCountEl.textContent = alertCount;
+    addLog(`Bin reached ${thresh}% threshold — firing GSM SMS alert`, 'danger');
+    addLog(`IoT: pushing real-time update to Firebase`, 'info');
+    setTimeout(()=>{
+      addSMS(`ALERT: Bin #1 is ${pct}% full. Please collect immediately. Time: ${simTime()}`);
+      addNotif('Bin #1 needs collection', `Fill level: ${pct}% — threshold exceeded at ${simTime()}`);
+    }, 600);
+  }
+
+  if(pct >= 100){
+    running = false;
+    clearInterval(simInterval);
+    btnStart.style.display='inline-block';
+    btnStart.textContent='Restart';
+    btnPause.style.display='none';
+    addLog('Bin is 100% full — collection required urgently', 'danger');
+    addNotif('Bin #1 OVERFLOW WARNING', 'Bin is completely full. Immediate collection needed!');
+  }
+}
+
+function startSim(){
+  if(fillLevel >= 100) emptyBin();
+  running = true;
+  btnStart.style.display='none';
+  btnPause.style.display='inline-block';
+  simInterval = setInterval(tick, 500);
+  addLog('Simulation started — monitoring active', 'success');
+}
+
+function pauseSim(){
+  running = !running;
+  btnPause.textContent = running ? 'Pause' : 'Resume';
+  if(running) simInterval = setInterval(tick, 500);
+  else clearInterval(simInterval);
+}
+
+function emptyBin(){
+  fillLevel = 0;
+  alertSent = false;
+  collectCount++;
+  collectCountEl.textContent = collectCount;
+  updateDisplay();
+  addLog('Bin emptied by collector — reset to 0%', 'success');
+  addNotif('Bin #1 collected', `Collector marked bin as emptied at ${simTime()}`);
+  delete window['logged25']; delete window['logged50']; delete window['logged75']; delete window['logged100'];
+}
+
+updateDisplay();
+addLog('System initialized — HC-SR04 sensor ready', 'success');
+addLog('GSM SIM800L connected — network MTN NG', 'success');
+addLog('Firebase IoT platform: online', 'info');
+</script>

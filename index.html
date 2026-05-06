@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Dustbin IoT Simulation | Waste Management Dashboard</title>
+    <meta name="description" content="Professional Smart City Waste Management Dashboard. Real-time IoT simulation for monitoring smart bins with integrated analytics and firmware generation.">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Smart Dustbin IoT Simulation">
+    <meta property="og:description" content="Real-time IoT simulation for monitoring smart bins with integrated analytics.">
+    <meta property="og:image" content="https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&q=80&w=1000">
+
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h2 class="sr-only">Smart dustbin IoT simulation showing fill level, sensor readings, GSM alerts and mobile app notifications</h2>
+
+    <div class="sim">
+        <!-- Sidebar: Bins and Global Controls -->
+        <aside style="grid-area: sidebar; display: flex; flex-direction: column; gap: 20px;">
+            <div class="panel">
+                <div class="panel-title">System Overview <span class="status-indicator pulsing"></span></div>
+                <div id="bins-container" style="display: flex; flex-direction: column; gap: 16px;">
+                    <!-- Bins will be injected here by JS -->
+                    <div class="bin-card active" id="bin-1-card">
+                        <div class="bin-card-header">
+                            <span class="bin-name">Bin #1 (Main Entrance)</span>
+                            <span class="bin-status-tag" id="bin-1-status-tag">Online</span>
+                        </div>
+                        <div class="bin-wrap">
+                            <div class="bin-scene" onmouseenter="onMouseEnterBin(0)" onmouseleave="onMouseLeaveBin(0)">
+                                <div class="bin-base">
+                                    <div class="bin-lid" id="lid-0" role="img" aria-label="Dustbin lid">
+                                        <svg width="110" height="14" viewBox="0 0 110 14"><rect x="0" y="0" width="110" height="14" rx="6" fill="none" stroke="var(--color-text-primary)" stroke-width="2"/></svg>
+                                    </div>
+                                    <div class="bin-top"></div>
+                                    <div class="bin-outer" id="bin-outer-0">
+                                        <div class="bin-fill" id="bin-fill-0"></div>
+                                        <div class="sensor-beam" id="sensor-beam-0"></div>
+                                        <div class="sensor-dot"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="fill-pct" id="fill-pct-0">0%</div>
+                        </div>
+                        <div class="stat-grid">
+                            <div class="stat-mini">
+                                <span class="stat-mini-val" id="dist-val-0">30.0 cm</span>
+                                <span class="stat-mini-label">Distance</span>
+                            </div>
+                            <div class="stat-mini">
+                                <span class="stat-mini-val" id="battery-val-0">100%</span>
+                                <span class="stat-mini-label">Battery</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn-add-bin" onclick="addBin()" style="width: 100%; margin-top: 12px; border-style: dashed;">+ Add New Bin</button>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">Control Center</div>
+                <div class="slider-row">
+                    <span>Fill Speed</span>
+                    <input type="range" id="speed" min="1" max="10" value="3" step="1">
+                    <span id="speed-out">3x</span>
+                </div>
+                <div class="slider-row">
+                    <span>Threshold</span>
+                    <input type="range" id="threshold" min="50" max="95" value="80" step="5">
+                    <span id="thresh-out">80%</span>
+                </div>
+                <div class="slider-row">
+                    <span>Weather</span>
+                    <select id="weather-select" onchange="updateWeather()" style="flex: 1; background: transparent; border: 1px solid var(--color-glass-border); color: var(--color-text-primary); border-radius: 4px; padding: 2px;">
+                        <option value="sunny">☀️ Sunny</option>
+                        <option value="rainy">🌧️ Rainy</option>
+                    </select>
+                </div>
+                <div class="btn-grid">
+                    <button id="btn-start" class="btn-success" onclick="startSim()">Start All</button>
+                    <button id="btn-pause" onclick="pauseSim()" style="display:none">Pause</button>
+                    <button onclick="requestNotificationPermission()" class="btn-success">Enable Alerts</button>
+                    <button onclick="emptyAllBins()" class="btn-danger">Empty All</button>
+                    <button onclick="resetSim()" class="btn-danger">Reset Sys</button>
+                    <button onclick="toggleDarkMode()">Theme</button>
+                    <button onclick="exportData()">Export</button>
+                </div>
+            </div>
+            <div style="margin-top: auto; padding: 10px; font-size: 11px; color: var(--color-text-tertiary); text-align: center; border-top: 1px solid var(--color-glass-border);">
+                Designed & Developed by<br>
+                <strong style="color: var(--color-text-secondary)">Adama Muhammad Seyoji</strong>
+            </div>
+        </aside>
+
+        <!-- Main Area: Map and Charts -->
+        <main style="grid-area: main; display: flex; flex-direction: column; gap: 20px;">
+            <div class="panel map-panel" style="flex: 1; position: relative;">
+                <div class="panel-title">Smart City Real-time Map</div>
+                <div id="map-container" style="height: 100%; min-height: 400px; background: rgba(0,0,0,0.05); border-radius: 12px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                    <!-- Map SVG will be here -->
+                    <svg width="100%" height="100%" viewBox="0 0 800 500" style="max-width: 100%;">
+                        <path d="M100,100 L700,100 L700,400 L100,400 Z" fill="none" stroke="var(--color-text-tertiary)" stroke-dasharray="4 4" />
+                        <circle cx="200" cy="200" r="10" id="map-dot-0" fill="var(--color-success)" />
+                        <text x="200" y="225" text-anchor="middle" font-size="10" fill="var(--color-text-secondary)">Bin #1</text>
+                        <circle cx="500" cy="150" r="10" id="map-dot-1" fill="var(--color-success)" style="display:none" />
+                        <text x="500" y="175" text-anchor="middle" font-size="10" fill="var(--color-text-secondary)" id="map-text-1" style="display:none">Bin #2</text>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="panel chart-panel">
+                <div class="panel-title">Analytics Dashboard</div>
+                <div style="height: 250px;">
+                    <canvas id="fillChart"></canvas>
+                </div>
+            </div>
+
+            <div class="panel firmware-panel">
+                <div class="panel-title">Arduino Firmware Snippet (ESP32)</div>
+                <pre id="firmware-code" style="background: rgba(0,0,0,0.1); padding: 12px; border-radius: 8px; font-size: 11px; max-height: 200px; overflow-y: auto; color: var(--color-text-primary);">// Loading firmware generator...</pre>
+                <button onclick="copyFirmware()" class="btn-mini" style="margin-top: 8px;">Copy Code</button>
+            </div>
+        </main>
+
+        <!-- Status Area: Comms and Logs -->
+        <section style="grid-area: status; display: flex; flex-direction: column; gap: 20px;">
+            <div class="panel">
+                <div class="panel-title">Mobile App Interface</div>
+                <div class="phone-frame">
+                    <div class="phone-bar">
+                        <span id="phone-time">09:00</span>
+                        <span style="margin-left: auto;">SmartBin Pro</span>
+                    </div>
+                    <div class="phone-content" id="notif-list">
+                        <div style="font-size:11px;color:var(--color-text-tertiary);text-align:center;padding:20px 0">No notifications</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">GSM / Cloud Comms</div>
+                <div class="gsm-panel">
+                    <div class="gsm-row"><span>SIM800L</span><span id="gsm-status">Connected</span></div>
+                    <div class="gsm-row"><span>Target</span><span style="color:var(--color-success)">+2347031447933</span></div>
+                    <div class="gsm-row"><span>Signal</span><span id="signal-bars">▮▮▮▮▯</span></div>
+                    <div class="gsm-row"><span>Last SMS</span><span id="last-sms">—</span></div>
+                </div>
+                <div id="sms-list" style="max-height:100px;overflow-y:auto;margin-top:10px;"></div>
+            </div>
+
+            <div class="panel" style="flex: 1;">
+                <div class="panel-title">
+                    System Event Log
+                    <button onclick="clearLogs()" class="btn-mini" style="border:none; opacity:0.6; padding:2px 6px;">Clear</button>
+                </div>
+                <div class="log" id="log" style="max-height: 300px;"></div>
+            </div>
+        </section>
+    </div>
+
+
+    <script src="script.js"></script>
+</body>
+</html>
