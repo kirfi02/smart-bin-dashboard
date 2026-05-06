@@ -637,11 +637,24 @@ pre {
 
 @media (max-width: 768px) {
   .sim {
+    padding: 1rem;
     grid-template-columns: 1fr;
     grid-template-areas: 
       "sidebar"
       "main"
       "status";
+  }
+  
+  .map-panel {
+    min-height: 300px !important;
+  }
+  
+  .stat-mini-val {
+    font-size: 12px;
+  }
+  
+  .fill-pct {
+    font-size: 22px;
   }
 }
 
